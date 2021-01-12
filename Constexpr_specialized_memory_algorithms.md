@@ -1,7 +1,7 @@
 ---
 title: "constexpr for specialized memory algorithms"
-document: PXXXXR0
-date: 2021-01-08
+document: P2283R0
+date: 2021-01-12
 audience: Library Evolution Group
 author:
   - name: Michael Schellenberger Costa
@@ -11,11 +11,11 @@ toc: false
 
 # Introduction
 
-This paper proposes adding `constexpr` support to the specialized memory algorithms. This is essentially a followup to [@P0784R7] which added `constepxr` support for all necessary machinery.  
+This paper proposes adding `constexpr` support to the specialized memory algorithms. This is essentially a followup to [@P0784R7] which added `constexpr` support for all necessary machinery.  
 
 # Motivation and Scope
 
-These algorithms have been forgotten in the final crunch to get C++20 out. To add insult to injury, they are essential to implementing constexpr container support, so every library has to provide its own internal helpers to do the exact same thing during constant evaluation. Just fill the void and add `constexpr` everywhere except the parallel overloads.
+These algorithms have been forgotten in the final crunch to get C++20 out. To add insult to injury, they are essential to implementing `constexpr` container support, so every library has to provide its own internal helpers to do the exact same thing during constant evaluation. Just fill the void and add `constexpr` everywhere except the parallel overloads.
 
 But wait, what about `uninitialized_default_construct`? We cannot use `std::construct_at` there! This is correct and there are two possible solutions:
 
@@ -28,13 +28,14 @@ But wait, what about `uninitialized_default_construct`? We cannot use `std::cons
 This proposal is a pure library extension.
 
 # Proposed Wording
-## Modify __7.7 [expr.const] §6__ of [@N4762] as follows:
+
+## Modify __7.7 [expr.const] §6__ of [@N4762] as follows
 
   For the purposes of determining whether an expression E is a core constant expression, the evaluation of a call to a member function of std::allocator<T> as defined in [allocator.members], where T is a literal type, does not disqualify E from being a core constant expression, even if the actual evaluation of such a call would otherwise fail the requirements for a core constant expression. Similarly, the evaluation of a call to std::destroy_­at, std::ranges::destroy_­at, [std::default_construct_at, std::ranges::default_construct_at,]{.add} std::construct_­at, or std::ranges::construct_­at does not disqualify E from being a core constant expression unless:
 
   for a call to [std::default_construct_at, std::ranges::default_construct_at,]{.add} std::construct_­at or std::ranges::construct_­at, the first argument, of type T*, does not point to storage allocated with std::allocator<T> or to an object whose lifetime began within the evaluation of E, or the evaluation of the underlying constructor call disqualifies E from being a core constant expression, or
 
-## Modify __20.10.2 [memory.syn]__ of [@N4762] as follows:
+## Modify __20.10.2 [memory.syn]__ of [@N4762] as follows
 
 ```
   template<class NoThrowForwardIterator>
@@ -208,6 +209,7 @@ This proposal is a pure library extension.
 ```
 
 ::: add
+
 ```
   // [specialized.default_construct], default_construct_at
   template<class T>
@@ -218,9 +220,11 @@ This proposal is a pure library extension.
       constexpr T* default_construct_at(T* location);
   }
 ```
+
 :::
 
-## Modify __25.11.3 [uninitialized.construct.default]__ of [@N4762] as follows:
+## Modify __25.11.3 [uninitialized.construct.default]__ of [@N4762] as follows
+
 ```diff
     template<class NoThrowForwardIterator>
 -     void uninitialized_default_construct(NoThrowForwardIterator first, NoThrowForwardIterator last);
@@ -272,7 +276,8 @@ This proposal is a pure library extension.
                                            default_sentinel).base();
 ```
 
-## Modify __25.11.4 [uninitialized.construct.value]__ of [@N4762] as follows:
+## Modify __25.11.4 [uninitialized.construct.value]__ of [@N4762] as follows
+
 ```diff
   template<class NoThrowForwardIterator>
 -   void uninitialized_value_construct(NoThrowForwardIterator first, NoThrowForwardIterator last);
@@ -324,7 +329,8 @@ This proposal is a pure library extension.
                                          value_sentinel).base();
 ```
 
-## Modify __25.11.5 [uninitialized.copy]__ of [@N4762] as follows:
+## Modify __25.11.5 [uninitialized.copy]__ of [@N4762] as follows
+
 ```diff
   template<class InputIterator, class NoThrowForwardIterator>
 -   NoThrowForwardIterator uninitialized_copy(InputIterator first, InputIterator last,
@@ -401,7 +407,8 @@ This proposal is a pure library extension.
     return {std::move(t.in).base(), t.out};
 ```
 
-## Modify __25.11.6 [uninitialized.move]__ of [@N4762] as follows:
+## Modify __25.11.6 [uninitialized.move]__ of [@N4762] as follows
+
 ```diff
   template<class InputIterator, class NoThrowForwardIterator>
 -   NoThrowForwardIterator uninitialized_move(InputIterator first, InputIterator last,
@@ -481,7 +488,8 @@ This proposal is a pure library extension.
   [Note 2: If an exception is thrown, some objects in the range first + [0, n) are left in a valid but unspecified state. — end note]
 ```
 
-## Modify __25.11.7 [uninitialized.fill]__ of [@N4762] as follows:
+## Modify __25.11.7 [uninitialized.fill]__ of [@N4762] as follows
+
 ```diff
   template<class NoThrowForwardIterator, class T>
 -   void uninitialized_fill(NoThrowForwardIterator first, NoThrowForwardIterator last, const T& x);
@@ -533,7 +541,7 @@ This proposal is a pure library extension.
     return uninitialized_fill(counted_iterator(first, n), default_sentinel, x).base();
 ```
 
-## Add __25.11.8 [special.default_construct]__ to [@N4762]:
+## Add __25.11.8 [special.default_construct]__ to [@N4762]
 
 ::: add
 ```

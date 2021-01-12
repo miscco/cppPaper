@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="mpark/wg21" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <meta name="dcterms.date" content="2021-01-08" />
+  <meta name="dcterms.date" content="2021-01-12" />
   <title>constexpr for specialized memory algorithms</title>
   <style>
       code{white-space: pre-wrap;}
@@ -417,11 +417,11 @@ code.sourceCode > span { display: inline; }
 <table style="border:none;float:right">
   <tr>
     <td>Document #:</td>
-    <td>PXXXXR0</td>
+    <td>P2283R0</td>
   </tr>
   <tr>
     <td>Date:</td>
-    <td>2021-01-08</td>
+    <td>2021-01-12</td>
   </tr>
   <tr>
     <td style="vertical-align:top">Project:</td>
@@ -444,9 +444,9 @@ code.sourceCode > span { display: inline; }
 </header>
 <div style="clear:both">
 <h1 data-number="1" id="introduction"><span class="header-section-number">1</span> Introduction<a href="#introduction" class="self-link"></a></h1>
-<p>This paper proposes adding <code class="sourceCode default">constexpr</code> support to the specialized memory algorithms. This is essentially a followup to <span class="citation" data-cites="P0784R7">[<a href="#ref-P0784R7" role="doc-biblioref">P0784R7</a>]</span> which added <code class="sourceCode default">constepxr</code> support for all necessary machinery.</p>
+<p>This paper proposes adding <code class="sourceCode default">constexpr</code> support to the specialized memory algorithms. This is essentially a followup to <span class="citation" data-cites="P0784R7">[<a href="#ref-P0784R7" role="doc-biblioref">P0784R7</a>]</span> which added <code class="sourceCode default">constexpr</code> support for all necessary machinery.</p>
 <h1 data-number="2" id="motivation-and-scope"><span class="header-section-number">2</span> Motivation and Scope<a href="#motivation-and-scope" class="self-link"></a></h1>
-<p>These algorithms have been forgotten in the final crunch to get C++20 out. To add insult to injury, they are essential to implementing constexpr container support, so every library has to provide its own internal helpers to do the exact same thing during constant evaluation. Just fill the void and add <code class="sourceCode default">constexpr</code> everywhere except the parallel overloads.</p>
+<p>These algorithms have been forgotten in the final crunch to get C++20 out. To add insult to injury, they are essential to implementing <code class="sourceCode default">constexpr</code> container support, so every library has to provide its own internal helpers to do the exact same thing during constant evaluation. Just fill the void and add <code class="sourceCode default">constexpr</code> everywhere except the parallel overloads.</p>
 <p>But wait, what about <code class="sourceCode default">uninitialized_default_construct</code>? We cannot use <code class="sourceCode default">std::construct_at</code> there! This is correct and there are two possible solutions:</p>
 <ol type="1">
 <li><p>Add an overload of <code class="sourceCode default">std::construct_at</code> that takes a <code class="sourceCode default">std::default_construct_tag</code> and does the right thing. This is just bad design. If we go to the trouble of inventing a new name, we should do #2</p></li>
@@ -455,10 +455,10 @@ code.sourceCode > span { display: inline; }
 <h1 data-number="3" id="impact-on-the-standard"><span class="header-section-number">3</span> Impact on the Standard<a href="#impact-on-the-standard" class="self-link"></a></h1>
 <p>This proposal is a pure library extension.</p>
 <h1 data-number="4" id="proposed-wording"><span class="header-section-number">4</span> Proposed Wording<a href="#proposed-wording" class="self-link"></a></h1>
-<h2 data-number="4.1" id="modify-7.7-expr.const-6-of-n4762-as-follows"><span class="header-section-number">4.1</span> Modify <strong>7.7 [expr.const] §6</strong> of <span class="citation" data-cites="N4762">[<a href="#ref-N4762" role="doc-biblioref">N4762</a>]</span> as follows:<a href="#modify-7.7-expr.const-6-of-n4762-as-follows" class="self-link"></a></h2>
+<h2 data-number="4.1" id="modify-7.7-expr.const-6-of-n4762-as-follows"><span class="header-section-number">4.1</span> Modify <strong>7.7 [expr.const] §6</strong> of <span class="citation" data-cites="N4762">[<a href="#ref-N4762" role="doc-biblioref">N4762</a>]</span> as follows<a href="#modify-7.7-expr.const-6-of-n4762-as-follows" class="self-link"></a></h2>
 <p>For the purposes of determining whether an expression E is a core constant expression, the evaluation of a call to a member function of std::allocator<T> as defined in [allocator.members], where T is a literal type, does not disqualify E from being a core constant expression, even if the actual evaluation of such a call would otherwise fail the requirements for a core constant expression. Similarly, the evaluation of a call to std::destroy_­at, std::ranges::destroy_­at, <span class="add" style="color: #006e28"><ins>std::default_construct_at, std::ranges::default_construct_at,</ins></span> std::construct_­at, or std::ranges::construct_­at does not disqualify E from being a core constant expression unless:</p>
 <p>for a call to <span class="add" style="color: #006e28"><ins>std::default_construct_at, std::ranges::default_construct_at,</ins></span> std::construct_­at or std::ranges::construct_­at, the first argument, of type T*, does not point to storage allocated with std::allocator<T> or to an object whose lifetime began within the evaluation of E, or the evaluation of the underlying constructor call disqualifies E from being a core constant expression, or</p>
-<h2 data-number="4.2" id="modify-20.10.2-memory.syn-of-n4762-as-follows"><span class="header-section-number">4.2</span> Modify <strong>20.10.2 [memory.syn]</strong> of <span class="citation" data-cites="N4762">[<a href="#ref-N4762" role="doc-biblioref">N4762</a>]</span> as follows:<a href="#modify-20.10.2-memory.syn-of-n4762-as-follows" class="self-link"></a></h2>
+<h2 data-number="4.2" id="modify-20.10.2-memory.syn-of-n4762-as-follows"><span class="header-section-number">4.2</span> Modify <strong>20.10.2 [memory.syn]</strong> of <span class="citation" data-cites="N4762">[<a href="#ref-N4762" role="doc-biblioref">N4762</a>]</span> as follows<a href="#modify-20.10.2-memory.syn-of-n4762-as-follows" class="self-link"></a></h2>
 <div class="sourceCode" id="cb1"><pre class="sourceCode default"><code class="sourceCode default"><span id="cb1-1"><a href="#cb1-1"></a>  template&lt;class NoThrowForwardIterator&gt;</span>
 <span id="cb1-2"><a href="#cb1-2"></a>    <span class="add" style="color: #006e28"><ins>constexpr</ins></span> void uninitialized_default_construct(NoThrowForwardIterator first,</span>
 <span id="cb1-3"><a href="#cb1-3"></a>                                                   NoThrowForwardIterator last);</span>
@@ -639,7 +639,7 @@ code.sourceCode > span { display: inline; }
 <span id="cb2-8"><a href="#cb2-8"></a>  }</span></code></pre></div>
 
 </div>
-<h2 data-number="4.3" id="modify-25.11.3-uninitialized.construct.default-of-n4762-as-follows"><span class="header-section-number">4.3</span> Modify <strong>25.11.3 [uninitialized.construct.default]</strong> of <span class="citation" data-cites="N4762">[<a href="#ref-N4762" role="doc-biblioref">N4762</a>]</span> as follows:<a href="#modify-25.11.3-uninitialized.construct.default-of-n4762-as-follows" class="self-link"></a></h2>
+<h2 data-number="4.3" id="modify-25.11.3-uninitialized.construct.default-of-n4762-as-follows"><span class="header-section-number">4.3</span> Modify <strong>25.11.3 [uninitialized.construct.default]</strong> of <span class="citation" data-cites="N4762">[<a href="#ref-N4762" role="doc-biblioref">N4762</a>]</span> as follows<a href="#modify-25.11.3-uninitialized.construct.default-of-n4762-as-follows" class="self-link"></a></h2>
 <div>
 <div class="sourceCode" id="cb3"><pre class="sourceCode diff"><code class="sourceCode diff"><span id="cb3-1"><a href="#cb3-1"></a>    template&lt;class NoThrowForwardIterator&gt;</span>
 <span id="cb3-2"><a href="#cb3-2"></a><span class="st">-     void uninitialized_default_construct(NoThrowForwardIterator first, NoThrowForwardIterator last);</span></span>
@@ -690,7 +690,7 @@ code.sourceCode > span { display: inline; }
 <span id="cb3-47"><a href="#cb3-47"></a>    return uninitialized_default_construct(counted_iterator(first, n),</span>
 <span id="cb3-48"><a href="#cb3-48"></a>                                           default_sentinel).base();</span></code></pre></div>
 </div>
-<h2 data-number="4.4" id="modify-25.11.4-uninitialized.construct.value-of-n4762-as-follows"><span class="header-section-number">4.4</span> Modify <strong>25.11.4 [uninitialized.construct.value]</strong> of <span class="citation" data-cites="N4762">[<a href="#ref-N4762" role="doc-biblioref">N4762</a>]</span> as follows:<a href="#modify-25.11.4-uninitialized.construct.value-of-n4762-as-follows" class="self-link"></a></h2>
+<h2 data-number="4.4" id="modify-25.11.4-uninitialized.construct.value-of-n4762-as-follows"><span class="header-section-number">4.4</span> Modify <strong>25.11.4 [uninitialized.construct.value]</strong> of <span class="citation" data-cites="N4762">[<a href="#ref-N4762" role="doc-biblioref">N4762</a>]</span> as follows<a href="#modify-25.11.4-uninitialized.construct.value-of-n4762-as-follows" class="self-link"></a></h2>
 <div>
 <div class="sourceCode" id="cb4"><pre class="sourceCode diff"><code class="sourceCode diff"><span id="cb4-1"><a href="#cb4-1"></a>  template&lt;class NoThrowForwardIterator&gt;</span>
 <span id="cb4-2"><a href="#cb4-2"></a><span class="st">-   void uninitialized_value_construct(NoThrowForwardIterator first, NoThrowForwardIterator last);</span></span>
@@ -741,7 +741,7 @@ code.sourceCode > span { display: inline; }
 <span id="cb4-47"><a href="#cb4-47"></a>    return uninitialized_value_construct(counted_iterator(first, n),</span>
 <span id="cb4-48"><a href="#cb4-48"></a>                                         value_sentinel).base();</span></code></pre></div>
 </div>
-<h2 data-number="4.5" id="modify-25.11.5-uninitialized.copy-of-n4762-as-follows"><span class="header-section-number">4.5</span> Modify <strong>25.11.5 [uninitialized.copy]</strong> of <span class="citation" data-cites="N4762">[<a href="#ref-N4762" role="doc-biblioref">N4762</a>]</span> as follows:<a href="#modify-25.11.5-uninitialized.copy-of-n4762-as-follows" class="self-link"></a></h2>
+<h2 data-number="4.5" id="modify-25.11.5-uninitialized.copy-of-n4762-as-follows"><span class="header-section-number">4.5</span> Modify <strong>25.11.5 [uninitialized.copy]</strong> of <span class="citation" data-cites="N4762">[<a href="#ref-N4762" role="doc-biblioref">N4762</a>]</span> as follows<a href="#modify-25.11.5-uninitialized.copy-of-n4762-as-follows" class="self-link"></a></h2>
 <div>
 <div class="sourceCode" id="cb5"><pre class="sourceCode diff"><code class="sourceCode diff"><span id="cb5-1"><a href="#cb5-1"></a>  template&lt;class InputIterator, class NoThrowForwardIterator&gt;</span>
 <span id="cb5-2"><a href="#cb5-2"></a><span class="st">-   NoThrowForwardIterator uninitialized_copy(InputIterator first, InputIterator last,</span></span>
@@ -817,7 +817,7 @@ code.sourceCode > span { display: inline; }
 <span id="cb5-72"><a href="#cb5-72"></a>                                default_sentinel, ofirst, olast);</span>
 <span id="cb5-73"><a href="#cb5-73"></a>    return {std::move(t.in).base(), t.out};</span></code></pre></div>
 </div>
-<h2 data-number="4.6" id="modify-25.11.6-uninitialized.move-of-n4762-as-follows"><span class="header-section-number">4.6</span> Modify <strong>25.11.6 [uninitialized.move]</strong> of <span class="citation" data-cites="N4762">[<a href="#ref-N4762" role="doc-biblioref">N4762</a>]</span> as follows:<a href="#modify-25.11.6-uninitialized.move-of-n4762-as-follows" class="self-link"></a></h2>
+<h2 data-number="4.6" id="modify-25.11.6-uninitialized.move-of-n4762-as-follows"><span class="header-section-number">4.6</span> Modify <strong>25.11.6 [uninitialized.move]</strong> of <span class="citation" data-cites="N4762">[<a href="#ref-N4762" role="doc-biblioref">N4762</a>]</span> as follows<a href="#modify-25.11.6-uninitialized.move-of-n4762-as-follows" class="self-link"></a></h2>
 <div>
 <div class="sourceCode" id="cb6"><pre class="sourceCode diff"><code class="sourceCode diff"><span id="cb6-1"><a href="#cb6-1"></a>  template&lt;class InputIterator, class NoThrowForwardIterator&gt;</span>
 <span id="cb6-2"><a href="#cb6-2"></a><span class="st">-   NoThrowForwardIterator uninitialized_move(InputIterator first, InputIterator last,</span></span>
@@ -896,7 +896,7 @@ code.sourceCode > span { display: inline; }
 <span id="cb6-75"><a href="#cb6-75"></a></span>
 <span id="cb6-76"><a href="#cb6-76"></a>  [Note 2: If an exception is thrown, some objects in the range first + [0, n) are left in a valid but unspecified state. — end note]</span></code></pre></div>
 </div>
-<h2 data-number="4.7" id="modify-25.11.7-uninitialized.fill-of-n4762-as-follows"><span class="header-section-number">4.7</span> Modify <strong>25.11.7 [uninitialized.fill]</strong> of <span class="citation" data-cites="N4762">[<a href="#ref-N4762" role="doc-biblioref">N4762</a>]</span> as follows:<a href="#modify-25.11.7-uninitialized.fill-of-n4762-as-follows" class="self-link"></a></h2>
+<h2 data-number="4.7" id="modify-25.11.7-uninitialized.fill-of-n4762-as-follows"><span class="header-section-number">4.7</span> Modify <strong>25.11.7 [uninitialized.fill]</strong> of <span class="citation" data-cites="N4762">[<a href="#ref-N4762" role="doc-biblioref">N4762</a>]</span> as follows<a href="#modify-25.11.7-uninitialized.fill-of-n4762-as-follows" class="self-link"></a></h2>
 <div>
 <div class="sourceCode" id="cb7"><pre class="sourceCode diff"><code class="sourceCode diff"><span id="cb7-1"><a href="#cb7-1"></a>  template&lt;class NoThrowForwardIterator, class T&gt;</span>
 <span id="cb7-2"><a href="#cb7-2"></a><span class="st">-   void uninitialized_fill(NoThrowForwardIterator first, NoThrowForwardIterator last, const T&amp; x);</span></span>
@@ -947,7 +947,7 @@ code.sourceCode > span { display: inline; }
 <span id="cb7-47"><a href="#cb7-47"></a>  <em>Effects:</em> Equivalent to:</span>
 <span id="cb7-48"><a href="#cb7-48"></a>    return uninitialized_fill(counted_iterator(first, n), default_sentinel, x).base();</span></code></pre></div>
 </div>
-<h2 data-number="4.8" id="add-25.11.8-special.default_construct-to-n4762"><span class="header-section-number">4.8</span> Add <strong>25.11.8 [special.default_construct]</strong> to <span class="citation" data-cites="N4762">[<a href="#ref-N4762" role="doc-biblioref">N4762</a>]</span>:<a href="#add-25.11.8-special.default_construct-to-n4762" class="self-link"></a></h2>
+<h2 data-number="4.8" id="add-25.11.8-special.default_construct-to-n4762"><span class="header-section-number">4.8</span> Add <strong>25.11.8 [special.default_construct]</strong> to <span class="citation" data-cites="N4762">[<a href="#ref-N4762" role="doc-biblioref">N4762</a>]</span><a href="#add-25.11.8-special.default_construct-to-n4762" class="self-link"></a></h2>
 <div class="add" style="color: #006e28">
 
 <div class="sourceCode" id="cb8"><pre class="sourceCode default default"><code class="sourceCode default"><span id="cb8-1"><a href="#cb8-1"></a>  template&lt;class T&gt;</span>
