@@ -9,9 +9,17 @@ author:
 toc: false
 ---
 
+# Revision History
+
+* R1
+  * Added feature test macros
+
+* R0
+  *  Initial draft
+
 # Introduction
 
-This paper proposes adding `constexpr` support to the specialized memory algorithms. This is essentially a followup to [@P0784R7] which added `constexpr` support for all necessary machinery.  
+This paper proposes adding `constexpr` support to the specialized memory algorithms. This is essentially a followup to [@P0784R7] which added `constexpr` support for all necessary machinery.
 
 # Motivation and Scope
 
@@ -96,7 +104,7 @@ This proposal is a pure library extension.
   }
 
   template<class InputIterator, class NoThrowForwardIterator>
-    @[constexpr]{.add}@ NoThrowForwardIterator 
+    @[constexpr]{.add}@ NoThrowForwardIterator
       uninitialized_copy(InputIterator first, InputIterator last,
                          NoThrowForwardIterator result);
   template<class ExecutionPolicy, class InputIterator, class NoThrowForwardIterator>
@@ -104,7 +112,7 @@ This proposal is a pure library extension.
                                               InputIterator first, InputIterator last,
                                               NoThrowForwardIterator result);
   template<class InputIterator, class Size, class NoThrowForwardIterator>
-    @[constexpr]{.add}@ NoThrowForwardIterator 
+    @[constexpr]{.add}@ NoThrowForwardIterator
       uninitialized_copy_n(InputIterator first, Size n, NoThrowForwardIterator result);
   template<class ExecutionPolicy, class InputIterator, class Size, class NoThrowForwardIterator>
     NoThrowForwardIterator uninitialized_copy_n(ExecutionPolicy&& exec, // see [algorithms.parallel.overloads]
@@ -133,7 +141,7 @@ This proposal is a pure library extension.
   }
 
   template<class InputIterator, class NoThrowForwardIterator>
-    @[constexpr]{.add}@ NoThrowForwardIterator 
+    @[constexpr]{.add}@ NoThrowForwardIterator
       uninitialized_move(InputIterator first, InputIterator last,
                          NoThrowForwardIterator result);
   template<class ExecutionPolicy, class InputIterator, class NoThrowForwardIterator>
@@ -228,7 +236,7 @@ This proposal is a pure library extension.
 ```diff
     template<class NoThrowForwardIterator>
 -     void uninitialized_default_construct(NoThrowForwardIterator first, NoThrowForwardIterator last);
-+     constexpr void uninitialized_default_construct(NoThrowForwardIterator first, 
++     constexpr void uninitialized_default_construct(NoThrowForwardIterator first,
 +                                                    NoThrowForwardIterator last);
 
   @_Effects:_@ Equivalent to:
@@ -255,7 +263,7 @@ This proposal is a pure library extension.
 
   template<class NoThrowForwardIterator, class Size>
 -   NoThrowForwardIterator uninitialized_default_construct_n(NoThrowForwardIterator first, Size n);
-+   constexpr NoThrowForwardIterator 
++   constexpr NoThrowForwardIterator
 +     uninitialized_default_construct_n(NoThrowForwardIterator first, Size n);
 
   @_Effects:_@ Equivalent to:
@@ -308,7 +316,7 @@ This proposal is a pure library extension.
 
   template<class NoThrowForwardIterator, class Size>
 -   NoThrowForwardIterator uninitialized_value_construct_n(NoThrowForwardIterator first, Size n);
-+   constexpr NoThrowForwardIterator 
++   constexpr NoThrowForwardIterator
 +     uninitialized_value_construct_n(NoThrowForwardIterator first, Size n);
 
   @_Effects:_@ Equivalent to:
@@ -335,11 +343,11 @@ This proposal is a pure library extension.
   template<class InputIterator, class NoThrowForwardIterator>
 -   NoThrowForwardIterator uninitialized_copy(InputIterator first, InputIterator last,
 -                                             NoThrowForwardIterator result);
-+   constexpr NoThrowForwardIterator 
-+     uninitialized_copy(InputIterator first, InputIterator last, 
++   constexpr NoThrowForwardIterator
++     uninitialized_copy(InputIterator first, InputIterator last,
 +                        NoThrowForwardIterator result);
 
-  @_Preconditions:_@ 
+  @_Preconditions:_@
     result + [0, (last - first)) does not overlap with [first, last).
 
   @_Effects:_@ Equivalent to:
@@ -364,7 +372,7 @@ This proposal is a pure library extension.
         uninitialized_copy(IR&& in_range, OR&& out_range);
   }
 
-  @_Preconditions:_@ 
+  @_Preconditions:_@
     [ofirst, olast) does not overlap with [ifirst, ilast).
 
   @_Effects:_@ Equivalent to:
@@ -376,10 +384,10 @@ This proposal is a pure library extension.
   template<class InputIterator, class Size, class NoThrowForwardIterator>
 -   NoThrowForwardIterator uninitialized_copy_n(InputIterator first, Size n,
 -                                               NoThrowForwardIterator result);
-+   constexpr NoThrowForwardIterator 
++   constexpr NoThrowForwardIterator
 +     uninitialized_copy_n(InputIterator first, Size n, NoThrowForwardIterator result);
 
-  @_Preconditions:_@ 
+  @_Preconditions:_@
     result + [0, n) does not overlap with first + [0, n).
 
   @_Effects:_@ Equivalent to:
@@ -398,7 +406,7 @@ This proposal is a pure library extension.
         uninitialized_copy_n(I ifirst, iter_difference_t<I> n, O ofirst, S olast);
   }
 
-  @_Preconditions:_@ 
+  @_Preconditions:_@
     [ofirst, olast) does not overlap with ifirst + [0, n).
 
   @_Effects:_@ Equivalent to:
@@ -413,10 +421,10 @@ This proposal is a pure library extension.
   template<class InputIterator, class NoThrowForwardIterator>
 -   NoThrowForwardIterator uninitialized_move(InputIterator first, InputIterator last,
 -                                             NoThrowForwardIterator result);
-+   constexpr NoThrowForwardIterator 
++   constexpr NoThrowForwardIterator
 +     uninitialized_move(InputIterator first, InputIterator last, NoThrowForwardIterator result);
 
-  @_Preconditions:_@ 
+  @_Preconditions:_@
     result + [0, (last - first)) does not overlap with [first, last).
 
   @_Effects:_@ Equivalent to:
@@ -441,12 +449,12 @@ This proposal is a pure library extension.
         uninitialized_move(IR&& in_range, OR&& out_range);
   }
 
-  @_Preconditions:_@ 
+  @_Preconditions:_@
     [ofirst, olast) does not overlap with [ifirst, ilast).
-    
+
   @_Effects:_@ Equivalent to:
     for (; ifirst != ilast && ofirst != olast; ++ofirst, (void)++ifirst)
--     ::new (voidify(*ofirst)) 
+-     ::new (voidify(*ofirst))
 -       remove_reference_t<iter_reference_t<O>>(ranges::iter_move(ifirst);
 +     construct_at(to_address(ofirst), ranges::iter_move(ifirst);
     return {std::move(ifirst), ofirst};
@@ -456,10 +464,10 @@ This proposal is a pure library extension.
   template<class InputIterator, class Size, class NoThrowForwardIterator>
 -   NoThrowForwardIterator uninitialized_move_n(InputIterator first, Size n,
 -                                               NoThrowForwardIterator result);
-+   constexpr NoThrowForwardIterator 
++   constexpr NoThrowForwardIterator
 +     uninitialized_move_n(InputIterator first, Size n, NoThrowForwardIterator result);
 
-  @_Preconditions:_@ 
+  @_Preconditions:_@
     result + [0, n) does not overlap with first + [0, n).
 
   @_Effects:_@ Equivalent to:
@@ -477,7 +485,7 @@ This proposal is a pure library extension.
         uninitialized_move_n(I ifirst, iter_difference_t<I> n, O ofirst, S olast);
   }
 
-  @_Preconditions:_@ 
+  @_Preconditions:_@
     [ofirst, olast) does not overlap with ifirst + [0, n).
 
   @_Effects:_@ Equivalent to:
@@ -493,7 +501,7 @@ This proposal is a pure library extension.
 ```diff
   template<class NoThrowForwardIterator, class T>
 -   void uninitialized_fill(NoThrowForwardIterator first, NoThrowForwardIterator last, const T& x);
-+   constexpr void uninitialized_fill(NoThrowForwardIterator first, 
++   constexpr void uninitialized_fill(NoThrowForwardIterator first,
 +                                     NoThrowForwardIterator last, const T& x);
   @_Effects:_@ Equivalent to:
     for (; first != last; ++first)
@@ -547,19 +555,23 @@ This proposal is a pure library extension.
 ```
   template<class T>
     constexpr T* default_construct_at(T* location);
- 
+
   namespace ranges {
     template<class T>
       constexpr T* default_construct_at(T* location);
   }
- 
-  @_Constraints:_@ 
+
+  @_Constraints:_@
     The expression ::new (declval<void*>()) T is well-formed when treated as an unevaluated operand.
- 
+
   @_Effects:_@ Equivalent to:
     return ::new (voidify(*location)) T;
 ```
 :::
+
+## Feature test macro
+
+Increase the value of `__cpp_lib_raw_memory_algorithms` to the date of adoption.
 
 # Implementation Experience
 
