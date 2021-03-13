@@ -33,7 +33,7 @@ But wait, what about `uninitialized_default_construct`? We cannot use `std::cons
 
 # Impact on the Standard
 
-This proposal is a pure library extension.
+This proposal would expand the allowed expression under constant evaluation, which is something that should be considered carefully. That said, the addition to core wording is highly targeted to a specific hard to missuse use case.
 
 # Proposed Wording
 
