@@ -242,7 +242,7 @@ This proposal is a pure library extension.
   @_Effects:_@ Equivalent to:
     for (; first != last; ++first)
 -     ::new (voidify(*first)) typename iterator_traits<NoThrowForwardIterator>::value_type;
-+     default_construct_at(to_address(first));
++     default_construct_at(addressof(*first));
 
   namespace ranges {
     template<no-throw-forward-iterator I, no-throw-sentinel-for<I> S>
@@ -258,7 +258,7 @@ This proposal is a pure library extension.
   @_Effects:_@ Equivalent to:
     for (; first != last; ++first)
 -     ::new (voidify(*first)) remove_reference_t<iter_reference_t<I>>;
-+     default_construct_at(to_address(first));
++     default_construct_at(addressof(*first));
     return first;
 
   template<class NoThrowForwardIterator, class Size>
@@ -269,7 +269,7 @@ This proposal is a pure library extension.
   @_Effects:_@ Equivalent to:
     for (; n > 0; (void)++first, --n)
 -     ::new (voidify(*first)) typename iterator_traits<NoThrowForwardIterator>::value_type;
-+     default_construct_at(to_address(first));
++     default_construct_at(addressof(*first));
     return first;
 
   namespace ranges {
@@ -295,7 +295,7 @@ This proposal is a pure library extension.
   @_Effects:_@ Equivalent to:
     for (; first != last; ++first)
 -     ::new (voidify(*first)) typename iterator_traits<NoThrowForwardIterator>::value_type();
-+     construct_at(to_address(first));
++     construct_at(addressof(*first));
 
   namespace ranges {
     template<no-throw-forward-iterator I, no-throw-sentinel-for<I> S>
@@ -311,7 +311,7 @@ This proposal is a pure library extension.
   @_Effects:_@ Equivalent to:
     for (; first != last; ++first)
 -     ::new (voidify(*first)) remove_reference_t<iter_reference_t<I>>();
-+     construct_at(to_address(first));
++     construct_at(addressof(*first));
     return first;
 
   template<class NoThrowForwardIterator, class Size>
@@ -322,7 +322,7 @@ This proposal is a pure library extension.
   @_Effects:_@ Equivalent to:
     for (; n > 0; (void)++first, --n)
 -     ::new (voidify(*first)) typename iterator_traits<NoThrowForwardIterator>::value_type();
-+     construct_at(to_address(first));
++     construct_at(addressof(*first));
     return first;
 
   namespace ranges {
@@ -354,7 +354,7 @@ This proposal is a pure library extension.
     for (; first != last; ++result, (void) ++first)
 -     ::new (voidify(*result))
 -       typename iterator_traits<NoThrowForwardIterator>::value_type(*first);
-+     construct_at(to_address(result), *first);
++     construct_at(addressof(*result), *first);
 
   @_Returns:_@ result.
 
@@ -378,7 +378,7 @@ This proposal is a pure library extension.
   @_Effects:_@ Equivalent to:
     for (; ifirst != ilast && ofirst != olast; ++ofirst, (void)++ifirst)
 -     ::new (voidify(*ofirst)) remove_reference_t<iter_reference_t<O>>(*ifirst);
-+     construct_at(to_address(ofirst), *ifirst);
++     construct_at(addressof(*ofirst), *ifirst);
     return {std::move(ifirst), ofirst};
 
   template<class InputIterator, class Size, class NoThrowForwardIterator>
@@ -394,7 +394,7 @@ This proposal is a pure library extension.
     for ( ; n > 0; ++result, (void) ++first, --n)
 -     ::new (voidify(*result))
 -       typename iterator_traits<NoThrowForwardIterator>::value_type(*first);
-+     construct_at(to_address(result), *first);
++     construct_at(addressof(*result), *first);
 
   @_Returns:_@ result.
 
@@ -431,7 +431,7 @@ This proposal is a pure library extension.
     for (; first != last; ++result, (void) ++first)
 -     ::new (voidify(*result))
 -       typename iterator_traits<NoThrowForwardIterator>::value_type(std::move(*first));
-+     construct_at(to_address(result), std::move(*first));
++     construct_at(addressof(*result), std::move(*first));
 
   @_Returns:_@ result.
 
@@ -456,7 +456,7 @@ This proposal is a pure library extension.
     for (; ifirst != ilast && ofirst != olast; ++ofirst, (void)++ifirst)
 -     ::new (voidify(*ofirst))
 -       remove_reference_t<iter_reference_t<O>>(ranges::iter_move(ifirst);
-+     construct_at(to_address(ofirst), ranges::iter_move(ifirst);
++     construct_at(addressof(*ofirst), ranges::iter_move(ifirst);
     return {std::move(ifirst), ofirst};
 
   [Note 1: If an exception is thrown, some objects in the range [first, last) are left in a valid, but unspecified state. — end note]
@@ -474,7 +474,7 @@ This proposal is a pure library extension.
     for ( ; n > 0; ++result, (void) ++first, --n)
 -     ::new (voidify(*result))
 -       typename iterator_traits<NoThrowForwardIterator>::value_type(std::move(*first));
-+     construct_at(to_address(result), std::move(*first));
++     construct_at(addressof(*result), std::move(*first));
   @_Returns:_@ result.
 
   namespace ranges {
@@ -507,7 +507,7 @@ This proposal is a pure library extension.
     for (; first != last; ++first)
 -     ::new (voidify(*first))
 -       typename iterator_traits<NoThrowForwardIterator>::value_type(x);
-+     construct_at(to_address(first), x);
++     construct_at(addressof(*first), x);
 
   namespace ranges {
     template<no-throw-forward-iterator I, no-throw-sentinel-for<I> S, class T>
@@ -523,7 +523,7 @@ This proposal is a pure library extension.
   @_Effects:_@ Equivalent to:
     for (; first != last; ++first)
 -     ::new (voidify(*first)) remove_reference_t<iter_reference_t<I>>(x);
-+     construct_at(to_address(first), x);
++     construct_at(addressof(*first), x);
     return first;
 
   template<class NoThrowForwardIterator, class Size, class T>
@@ -535,7 +535,7 @@ This proposal is a pure library extension.
     for (; n--; ++first)
 -     ::new (voidify(*first))
 -       typename iterator_traits<NoThrowForwardIterator>::value_type(x);
-+     construct_at(to_address(first), x);
++     construct_at(addressof(*first), x);
     return first;
 
   namespace ranges {
