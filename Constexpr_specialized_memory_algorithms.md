@@ -1,7 +1,7 @@
 ---
 title: "constexpr for specialized memory algorithms"
-document: P2283R0
-date: 2021-01-12
+document: P2283R1
+date: 2021-03-30
 audience: Library Evolution Group
 author:
   - name: Michael Schellenberger Costa
@@ -13,6 +13,9 @@ toc: false
 
 * R1
   * Added feature test macros
+  * Clarified scope and impact on core wording
+  * Removed usage of `to_address`
+  * Explained the need for `default_construct_at`
 
 * R0
   *  Initial draft
@@ -25,15 +28,60 @@ This paper proposes adding `constexpr` support to the specialized memory algorit
 
 These algorithms have been forgotten in the final crunch to get C++20 out. To add insult to injury, they are essential to implementing `constexpr` container support, so every library has to provide its own internal helpers to do the exact same thing during constant evaluation. Just fill the void and add `constexpr` everywhere except the parallel overloads.
 
-But wait, what about `uninitialized_default_construct`? We cannot use `std::construct_at` there! This is correct and there are two possible solutions:
+But what about `uninitialized_default_construct`? We cannot use `construct_at` there, because it would always _value_-initialize!
 
-1. Add an overload of `std::construct_at` that takes a `std::default_construct_tag` and does the right thing. This is just bad design. If we go to the trouble of inventing a new name, we should do #2
+Or can we? Reading an indetermined value would be UB anyhow so just _value_-initialize away and be done with it? Lets consider the following code:
 
-2. Add a new library function `std::default_construct_at` that does the right thing. This is what is proposed here.
+```cpp
+#include <memory>
+
+constexpr bool something(const size_t numElements) {
+    std::allocator<int> alloc;
+    std::allocator_traits<std::allocator<int>> allty;
+    auto data = allty.allocate(alloc, numElements);
+
+    std::uninitialized_default_construct(data, data + numElements);
+    const bool res = std::all_of(data, data + numElements,
+                                 [](const int val) { return val == 0; }));
+
+    std::destroy(data, data + numElements);
+    allty.deallocate(alloc, data, numElements);
+    return res;
+}
+
+static_assert(something(5));
+```
+
+If we go the route of "just use `construct_at` during constant evaluation" this code will compile fine due to _value_-initialization of the elements of `data`. However, it will also crash and burn during runtime, as there the elements of `data` will be _default_-initialized. As `int` is a trivial type their value is indeterminate.
+
+If anywhere in the program we read that value we are in for some fun. We might even get lucky and use a compiler that zeroes out memory in DEBUG mode, so the bug would only materialize in RELEASE builds.
+
+By taking the shortcut of `construct_at` we would change the meaning of the code depending on whether it is run during runtime or constant evaluation. Even worse, the bug will not appear during compile time, though we blessed it with a `static_assert`.
+
+But what *is* the right thing? As always do as the `int`s do, because there is already support in the standard for the right thing:
+
+```cpp
+constexpr bool somethingElse() {
+  int meow;
+  return true;
+}
+
+static_assert(somethingElse());
+```
+
+This is totally fine both during runtime and constant evaluation. What is the value of `meow`? We do not know, but as long as we do not read from it, all is fine. It is the users responsibility to give it a proper value before reading from it.
+
+So we need to ensure that the semantics of the code do not change between runtime and constant evaluation, which gives us two possible solutions:
+
+1. Add an overload of `construct_at` that takes a `default_construct_tag` and does the right thing. However, if we go through the trouble of adding a new name we should rather go with
+
+2. Add a new library function `default_construct_at` that does the right thing. This is what is proposed here.
+
+While the actual definition of `default_construct_at` is a bit on the verbose side, it extends existing library technology to avoid the schism between runtime and constant evaluation and keeps the library consistent with the language.
 
 # Impact on the Standard
 
-This proposal would expand the allowed expression under constant evaluation, which is something that should be considered carefully. That said, the addition to core wording is highly targeted to a specific hard to missuse use case.
+This proposal would expand the list of allowed expressions under constant evaluation, which is something that should be considered carefully. That said, the addition to core wording is highly targeted to a specific use case, that would not be achievable otherwise.
 
 # Proposed Wording
 
@@ -41,7 +89,8 @@ This proposal would expand the allowed expression under constant evaluation, whi
 
   For the purposes of determining whether an expression E is a core constant expression, the evaluation of a call to a member function of std::allocator<T> as defined in [allocator.members], where T is a literal type, does not disqualify E from being a core constant expression, even if the actual evaluation of such a call would otherwise fail the requirements for a core constant expression. Similarly, the evaluation of a call to std::destroy_­at, std::ranges::destroy_­at, [std::default_construct_at, std::ranges::default_construct_at,]{.add} std::construct_­at, or std::ranges::construct_­at does not disqualify E from being a core constant expression unless:
 
-  for a call to [std::default_construct_at, std::ranges::default_construct_at,]{.add} std::construct_­at or std::ranges::construct_­at, the first argument, of type T*, does not point to storage allocated with std::allocator<T> or to an object whose lifetime began within the evaluation of E, or the evaluation of the underlying constructor call disqualifies E from being a core constant expression, or
+  for a call to [std::default_construct_at, std::ranges::default_construct_at,]{.add} std::construct_­at or
+  std::ranges::construct_­at, the first argument, of type T*, does not point to storage allocated with std::allocator<T> or to an object whose lifetime began within the evaluation of E, or the evaluation of the underlying constructor call disqualifies E from being a core constant expression, or
 
 ## Modify __20.10.2 [memory.syn]__ of [@N4762] as follows
 
@@ -594,3 +643,7 @@ references:
       year: 2019
     URL: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0784r7.html
 ---
+
+# Acknowledgements
+
+Big thanks go to JeanHeyd Meneide for proof reading and discussions.
