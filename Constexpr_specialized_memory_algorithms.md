@@ -28,13 +28,9 @@ This paper proposes adding `constexpr` support to the specialized memory algorit
 
 These algorithms have been forgotten in the final crunch to get C++20 out. To add insult to injury, they are essential to implementing `constexpr` container support, so every library has to provide its own internal helpers to do the exact same thing during constant evaluation. Just fill the void and add `constexpr` everywhere except the parallel overloads.
 
-But what about `uninitialized_default_construct`? We cannot use `construct_at` there, because it would always _value_-initialize!
-
-Or can we? Reading an indetermined value would be UB anyhow so just _value_-initialize away and be done with it? Lets consider the following code:
+But what about `uninitialized_default_construct`? We cannot use `construct_at` there, because it would always _value_-initialize! Or can we? Reading an indetermined value would be UB anyhow so just _value_-initialize away and be done with it? Lets consider the following code:
 
 ```cpp
-#include <memory>
-
 constexpr bool something(const size_t numElements) {
     std::allocator<int> alloc;
     std::allocator_traits<std::allocator<int>> allty;
@@ -48,24 +44,20 @@ constexpr bool something(const size_t numElements) {
     allty.deallocate(alloc, data, numElements);
     return res;
 }
-
 static_assert(something(5));
 ```
 
-If we go the route of "just use `construct_at` during constant evaluation" this code will compile fine due to _value_-initialization of the elements of `data`. However, it will also crash and burn during runtime, as there the elements of `data` will be _default_-initialized. As `int` is a trivial type their value is indeterminate.
+If we go the route of "just use `construct_at` during constant evaluation" this code will compile fine due to _value_-initialization of the elements of `data` during constant evaluation. However, it will also crash and burn during runtime, as there the elements of `data` will be _default_-initialized and with `int` being a trivial type their value is indeterminate. We might even get lucky and use a compiler that zeroes out memory in DEBUG mode, so the bug would only materialize in RELEASE builds.
 
-If anywhere in the program we read that value we are in for some fun. We might even get lucky and use a compiler that zeroes out memory in DEBUG mode, so the bug would only materialize in RELEASE builds.
+By taking the shortcut of `construct_at` we would change the semantics of the code depending on whether it is run during runtime or constant evaluation. Even worse, the bug will not appear during compile time, though we blessed it with a `static_assert`.
 
-By taking the shortcut of `construct_at` we would change the meaning of the code depending on whether it is run during runtime or constant evaluation. Even worse, the bug will not appear during compile time, though we blessed it with a `static_assert`.
-
-But what *is* the right thing? As always do as the `int`s do, because there is already support in the standard for the right thing:
+But what *is* the right thing? As always do as the `int`s do, because there is already support in the language for the right thing:
 
 ```cpp
 constexpr bool somethingElse() {
   int meow;
   return true;
 }
-
 static_assert(somethingElse());
 ```
 
@@ -73,11 +65,17 @@ This is totally fine both during runtime and constant evaluation. What is the va
 
 So we need to ensure that the semantics of the code do not change between runtime and constant evaluation, which gives us two possible solutions:
 
-1. Add an overload of `construct_at` that takes a `default_construct_tag` and does the right thing. However, if we go through the trouble of adding a new name we should rather go with
+1. Add an overload of `construct_at` that takes a `default_construct_tag` and does the right thing. However, if we already go through the trouble of adding a new name why create a complicated overload of a function, that does something different than what the function promises. Rather we should
 
-2. Add a new library function `default_construct_at` that does the right thing. This is what is proposed here.
+2. Add a new library function `default_construct_at` that does the right thing. While the actual definition of `default_construct_at` is a bit on the verbose side, it extends existing library technology to avoid the schism between runtime and constant evaluation and keeps the library consistent with the language.
 
-While the actual definition of `default_construct_at` is a bit on the verbose side, it extends existing library technology to avoid the schism between runtime and constant evaluation and keeps the library consistent with the language.
+```cpp
+// Alternative 1
+auto meow = std::construct_at<T>(std::default_construct_tag);
+
+// Alternative 2
+auto woof = std::default_construct_at<T>();
+```
 
 # Impact on the Standard
 
@@ -508,7 +506,8 @@ This proposal would expand the list of allowed expressions under constant evalua
 +     construct_at(addressof(*ofirst), ranges::iter_move(ifirst);
     return {std::move(ifirst), ofirst};
 
-  [Note 1: If an exception is thrown, some objects in the range [first, last) are left in a valid, but unspecified state. — end note]
+  [Note 1: If an exception is thrown, some objects in the range [first, last)
+  are left in a valid, but unspecified state. — end note]
 
   template<class InputIterator, class Size, class NoThrowForwardIterator>
 -   NoThrowForwardIterator uninitialized_move_n(InputIterator first, Size n,
@@ -542,7 +541,8 @@ This proposal would expand the list of allowed expressions under constant evalua
                                 default_sentinel, ofirst, olast);
     return {std::move(t.in).base(), t.out};
 
-  [Note 2: If an exception is thrown, some objects in the range first + [0, n) are left in a valid but unspecified state. — end note]
+  [Note 2: If an exception is thrown, some objects in the range first + [0, n)
+  are left in a valid but unspecified state. — end note]
 ```
 
 ## Modify __25.11.7 [uninitialized.fill]__ of [@N4762] as follows
@@ -624,9 +624,8 @@ Increase the value of `__cpp_lib_raw_memory_algorithms` to the date of adoption.
 
 # Implementation Experience
 
-  - [`Microsoft STL`][STL] This has been partially implemented for support of constexpr vector in MSVC STL.
-
-[STL]: https://https://github.com/microsoft/STL
+  - [`Microsoft STL`](https://github.com/miscco/STL/pull/2) This has been partially implemented for MSVC STL. For obvious reasons, it lacks compiler support for `default_construct_at`.
+  - [`libc++`] An implementation in libc++ / clang is planned if there is positive consensus that this is the right way forward
 
 ---
 references:
