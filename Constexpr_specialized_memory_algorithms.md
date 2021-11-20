@@ -1,7 +1,7 @@
 ---
 title: "constexpr for specialized memory algorithms"
-document: P2283R1
-date: 2021-03-30
+document: P2283R2
+date: 2021-11-21
 audience: Library Evolution Group
 author:
   - name: Michael Schellenberger Costa
@@ -10,6 +10,9 @@ toc: false
 ---
 
 # Revision History
+
+* R2
+  * Remove `default_construct_at` and `uninitialized_default_construct` as that requires core wording changes that will become their own paper.
 
 * R1
   * Added feature test macros
@@ -22,106 +25,23 @@ toc: false
 
 # Introduction
 
-This paper proposes adding `constexpr` support to the specialized memory algorithms. This is essentially a followup to [@P0784R7] which added `constexpr` support for all necessary machinery.
+This paper proposes adding `constexpr` support to most of the specialized memory algorithms. This is essentially a followup to [@P0784R7] which added `constexpr` support for all necessary machinery.
 
 # Motivation and Scope
 
-These algorithms have been forgotten in the final crunch to get C++20 out. To add insult to injury, they are essential to implementing `constexpr` container support, so every library has to provide its own internal helpers to do the exact same thing during constant evaluation. Just fill the void and add `constexpr` everywhere except the parallel overloads.
+These algorithms have been forgotten in the final crunch to get C++20 out. To add insult to injury, they are essential to implementing `constexpr` container support, so every library has to provide its own internal helpers to do the exact same thing during constant evaluation. Eve worse, everything is already there. We simply need to use `construct_at` and be done with it. Just fill the void and add `constexpr` everywhere except the parallel overloads.
 
-But what about `uninitialized_default_construct`? We cannot use `construct_at` there, because it would always _value_-initialize! Or can we? Reading an indetermined value would be UB anyhow so just _value_-initialize away and be done with it? Lets consider the following code:
-
-```cpp
-constexpr bool something(const size_t numElements) {
-    std::allocator<int> alloc;
-    std::allocator_traits<std::allocator<int>> allty;
-    auto data = allty.allocate(alloc, numElements);
-
-    std::uninitialized_default_construct(data, data + numElements);
-    const bool res = std::all_of(data, data + numElements,
-                                 [](const int val) { return val == 0; }));
-
-    std::destroy(data, data + numElements);
-    allty.deallocate(alloc, data, numElements);
-    return res;
-}
-static_assert(something(5));
-```
-
-If we go the route of "just use `construct_at` during constant evaluation" this code will compile fine due to _value_-initialization of the elements of `data` during constant evaluation. However, it will also crash and burn during runtime, as there the elements of `data` will be _default_-initialized and with `int` being a trivial type their value is indeterminate. We might even get lucky and use a compiler that zeroes out memory in DEBUG mode, so the bug would only materialize in RELEASE builds.
-
-By taking the shortcut of `construct_at` we would change the semantics of the code depending on whether it is run during runtime or constant evaluation. Even worse, the bug will not appear during compile time, though we blessed it with a `static_assert`.
-
-But what *is* the right thing? As always do as the `int`s do, because there is already support in the language for the right thing:
-
-```cpp
-constexpr bool somethingElse() {
-  int meow;
-  return true;
-}
-static_assert(somethingElse());
-```
-
-This is totally fine both during runtime and constant evaluation. What is the value of `meow`? We do not know, but as long as we do not read from it, all is fine. It is the users responsibility to give it a proper value before reading from it.
-
-So we need to ensure that the semantics of the code do not change between runtime and constant evaluation, which gives us two possible solutions:
-
-1. Add an overload of `construct_at` that takes a `default_construct_tag` and does the right thing. However, if we already go through the trouble of adding a new name why create a complicated overload of a function, that does something different than what the function promises. Rather we should
-
-2. Add a new library function `default_construct_at` that does the right thing. While the actual definition of `default_construct_at` is a bit on the verbose side, it extends existing library technology to avoid the schism between runtime and constant evaluation and keeps the library consistent with the language.
-
-```cpp
-// Alternative 1
-auto meow = std::construct_at<T>(std::default_construct_tag);
-
-// Alternative 2
-auto woof = std::default_construct_at<T>();
-```
+But what about `uninitialized_default_construct`? We cannot use `construct_at` there, because it would always _value_-initialize. Consequently, support for `uninitialized_default_construct` does require core wording changes, as there is currently no way to _default__initialize something inside a core constant expression. Those changes have been removed from this paper to limit the scope to LEWG only.
 
 # Impact on the Standard
 
-This proposal would expand the list of allowed expressions under constant evaluation, which is something that should be considered carefully. That said, the addition to core wording is highly targeted to a specific use case, that would not be achievable otherwise.
+This proposal is a pure library addition. All algorithms changed in this paper have already a constexpr enabled `_Ugly` sibling as they are necessary for `constexpr` vector support.
 
 # Proposed Wording
-
-## Modify __7.7 [expr.const] §6__ of [@N4762] as follows
-
-  For the purposes of determining whether an expression E is a core constant expression, the evaluation of a call to a member function of std::allocator<T> as defined in [allocator.members], where T is a literal type, does not disqualify E from being a core constant expression, even if the actual evaluation of such a call would otherwise fail the requirements for a core constant expression. Similarly, the evaluation of a call to std::destroy_­at, std::ranges::destroy_­at, [std::default_construct_at, std::ranges::default_construct_at,]{.add} std::construct_­at, or std::ranges::construct_­at does not disqualify E from being a core constant expression unless:
-
-  for a call to [std::default_construct_at, std::ranges::default_construct_at,]{.add} std::construct_­at or
-  std::ranges::construct_­at, the first argument, of type T*, does not point to storage allocated with std::allocator<T> or to an object whose lifetime began within the evaluation of E, or the evaluation of the underlying constructor call disqualifies E from being a core constant expression, or
 
 ## Modify __20.10.2 [memory.syn]__ of [@N4762] as follows
 
 ```
-  template<class NoThrowForwardIterator>
-    @[constexpr]{.add}@ void uninitialized_default_construct(NoThrowForwardIterator first,
-                                                   NoThrowForwardIterator last);
-
-  template<class ExecutionPolicy, class NoThrowForwardIterator>
-    void uninitialized_default_construct(ExecutionPolicy&& exec,        // see [algorithms.parallel.overloads]
-                                         NoThrowForwardIterator first,
-                                         NoThrowForwardIterator last);
-  template<class NoThrowForwardIterator, class Size>
-    @[constexpr]{.add}@ NoThrowForwardIterator
-      uninitialized_default_construct_n(NoThrowForwardIterator first, Size n);
-  template<class ExecutionPolicy, class NoThrowForwardIterator, class Size>
-    NoThrowForwardIterator
-      uninitialized_default_construct_n(ExecutionPolicy&& exec,         // see [algorithms.parallel.overloads]
-                                        NoThrowForwardIterator first, Size n);
-
-  namespace ranges {
-    template<no-throw-forward-iterator I, no-throw-sentinel-for<I> S>
-      requires default_initializable<iter_value_t<I>>
-        @[constexpr]{.add}@ I uninitialized_default_construct(I first, S last);
-    template<no-throw-forward-range R>
-      requires default_initializable<range_value_t<R>>
-        @[constexpr]{.add}@ borrowed_iterator_t<R> uninitialized_default_construct(R&& r);
-
-    template<no-throw-forward-iterator I>
-      requires default_initializable<iter_value_t<I>>
-        @[constexpr]{.add}@ I uninitialized_default_construct_n(I first, iter_difference_t<I> n);
-  }
-
   template<class NoThrowForwardIterator>
     @[constexpr]{.add}@ void uninitialized_value_construct(NoThrowForwardIterator first,
                                                    NoThrowForwardIterator last);
@@ -261,74 +181,6 @@ This proposal would expand the list of allowed expressions under constant evalua
     template<class T, class... Args>
       constexpr T* construct_at(T* location, Args&&... args);
   }
-```
-
-::: add
-
-```
-  // [specialized.default_construct], default_construct_at
-  template<class T>
-    constexpr T* default_construct_at(T* location);
-
-  namespace ranges {
-    template<class T>
-      constexpr T* default_construct_at(T* location);
-  }
-```
-
-:::
-
-## Modify __25.11.3 [uninitialized.construct.default]__ of [@N4762] as follows
-
-```diff
-    template<class NoThrowForwardIterator>
--     void uninitialized_default_construct(NoThrowForwardIterator first, NoThrowForwardIterator last);
-+     constexpr void uninitialized_default_construct(NoThrowForwardIterator first,
-+                                                    NoThrowForwardIterator last);
-
-  @_Effects:_@ Equivalent to:
-    for (; first != last; ++first)
--     ::new (voidify(*first)) typename iterator_traits<NoThrowForwardIterator>::value_type;
-+     default_construct_at(addressof(*first));
-
-  namespace ranges {
-    template<no-throw-forward-iterator I, no-throw-sentinel-for<I> S>
-      requires default_initializable<iter_value_t<I>>
--     I uninitialized_default_construct(I first, S last);
-+     constexpr I uninitialized_default_construct(I first, S last);
-    template<no-throw-forward-range R>
-      requires default_initializable<range_value_t<R>>
--     borrowed_iterator_t<R> uninitialized_default_construct(R&& r);
-+     constexpr borrowed_iterator_t<R> uninitialized_default_construct(R&& r);
-  }
-
-  @_Effects:_@ Equivalent to:
-    for (; first != last; ++first)
--     ::new (voidify(*first)) remove_reference_t<iter_reference_t<I>>;
-+     default_construct_at(addressof(*first));
-    return first;
-
-  template<class NoThrowForwardIterator, class Size>
--   NoThrowForwardIterator uninitialized_default_construct_n(NoThrowForwardIterator first, Size n);
-+   constexpr NoThrowForwardIterator
-+     uninitialized_default_construct_n(NoThrowForwardIterator first, Size n);
-
-  @_Effects:_@ Equivalent to:
-    for (; n > 0; (void)++first, --n)
--     ::new (voidify(*first)) typename iterator_traits<NoThrowForwardIterator>::value_type;
-+     default_construct_at(addressof(*first));
-    return first;
-
-  namespace ranges {
-    template<no-throw-forward-iterator I>
-      requires default_initializable<iter_value_t<I>>
--     I uninitialized_default_construct_n(I first, iter_difference_t<I> n);
-+     constexpr I uninitialized_default_construct_n(I first, iter_difference_t<I> n);
-  }
-
-  @_Effects:_@ Equivalent to:
-    return uninitialized_default_construct(counted_iterator(first, n),
-                                           default_sentinel).base();
 ```
 
 ## Modify __25.11.4 [uninitialized.construct.value]__ of [@N4762] as follows
@@ -598,34 +450,14 @@ This proposal would expand the list of allowed expressions under constant evalua
     return uninitialized_fill(counted_iterator(first, n), default_sentinel, x).base();
 ```
 
-## Add __25.11.8 [special.default_construct]__ to [@N4762]
-
-::: add
-```
-  template<class T>
-    constexpr T* default_construct_at(T* location);
-
-  namespace ranges {
-    template<class T>
-      constexpr T* default_construct_at(T* location);
-  }
-
-  @_Constraints:_@
-    The expression ::new (declval<void*>()) T is well-formed when treated as an unevaluated operand.
-
-  @_Effects:_@ Equivalent to:
-    return ::new (voidify(*location)) T;
-```
-:::
-
 ## Feature test macro
 
 Increase the value of `__cpp_lib_raw_memory_algorithms` to the date of adoption.
 
 # Implementation Experience
 
-  - [`Microsoft STL`](https://github.com/miscco/STL/pull/2) This has been partially implemented for MSVC STL. For obvious reasons, it lacks compiler support for `default_construct_at`.
-  - [`libc++`] An implementation in libc++ / clang is planned if there is positive consensus that this is the right way forward
+  - [`Microsoft STL`](https://github.com/miscco/STL/pull/2) This has been implemented for MSVC STL.
+  - [`libc++`](https://github.com/miscco/llvm-project/pull/1) This has been implemented for LLVM libc++.
 
 ---
 references:
